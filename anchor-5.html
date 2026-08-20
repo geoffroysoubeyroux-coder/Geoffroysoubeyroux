@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0A2830">
+<title>Anchor — carnet de bord et d'entretien</title>
+<link rel="manifest" href="anchor.webmanifest">
+<link rel="apple-touch-icon" href="anchor-icon-192.png">
+<style>
+:root{
+  --chart:#E4EBE7;      /* teinte "petits fonds" des cartes marines */
+  --paper:#FBFAF6;
+  --ink:#0A2830;        /* encre bleu-vert profonde */
+  --ink-2:#4A6169;
+  --ink-3:#8A9BA0;
+  --rule:#CBD8D3;
+  --sea:#1F6F78;        /* eau claire — état normal */
+  --brass:#9A6E1E;      /* laiton — échéance proche */
+  --magenta:#BE2F72;    /* magenta carte marine — dépassé */
+  --display: ui-monospace,"SF Mono","SFMono-Regular","Roboto Mono","DejaVu Sans Mono",monospace;
+  --body: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --pad: 16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--body); color:var(--ink); background:var(--chart);
+  font-size:16px; line-height:1.45;
+  padding-bottom:calc(72px + env(safe-area-inset-bottom));
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+
+/* ---------- micro-typographie ---------- */
+.eyebrow{
+  font-family:var(--display); font-size:10px; font-weight:700;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3);
+}
+.num{font-family:var(--display); font-variant-numeric:tabular-nums; letter-spacing:-.02em}
+
+/* ---------- en-tête ---------- */
+header{
+  background:var(--ink); color:var(--paper);
+  padding:calc(14px + env(safe-area-inset-top)) var(--pad) 14px;
+}
+header .eyebrow{color:#7FA5A8}
+header h1{margin:2px 0 0; font-size:19px; font-weight:600; letter-spacing:-.01em}
+
+/* ---------- compteur horaire (élément signature) ---------- */
+.meter{display:flex;gap:14px;margin-top:14px}
+.meter-unit{flex:1}
+.meter-drum{
+  display:flex; gap:3px; margin-top:5px;
+  background:#061C22; padding:6px; border-radius:3px;
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.55);
+}
+.digit{
+  flex:1; text-align:center; padding:7px 0;
+  background:linear-gradient(#F6F4EC,#D9D6CB);
+  color:#0A2830; font-family:var(--display); font-weight:700; font-size:19px;
+  border-radius:1px;
+}
+.digit.tenth{background:linear-gradient(#C9376F,#A32259); color:#fff}
+.meter-cap{margin-top:5px;font-size:11px;color:#7FA5A8}
+
+/* ---------- structure ---------- */
+main{padding:var(--pad) var(--pad) 8px; max-width:640px; margin:0 auto}
+section[hidden]{display:none}
+.card{
+  background:var(--paper); border:1px solid var(--rule); border-radius:10px;
+  padding:14px; margin-bottom:12px;
+}
+h2{font-size:13px;font-weight:700;letter-spacing:.02em;margin:22px 0 10px}
+h2:first-child{margin-top:0}
+
+/* ---------- jauge d'échéance (élément signature) ---------- */
+.task{border-bottom:1px solid var(--rule); padding:13px 0}
+.task:last-child{border-bottom:0;padding-bottom:0}
+.task:first-child{padding-top:0}
+.task-top{display:flex;align-items:baseline;gap:10px}
+.task-name{flex:1;font-size:15px;font-weight:500;letter-spacing:-.01em}
+.task-rest{font-family:var(--display);font-size:13px;font-weight:700;white-space:nowrap}
+.axes{margin-top:9px;display:flex;flex-direction:column;gap:4px}
+.axis{display:flex;align-items:center;gap:8px}
+.axis-key{
+  font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:.1em;
+  color:var(--ink-3);width:26px;flex-shrink:0
+}
+.bar{flex:1;height:5px;background:var(--rule);border-radius:3px;overflow:hidden}
+.bar span{display:block;height:100%;background:var(--ink-3);border-radius:3px}
+.axis-val{font-family:var(--display);font-size:10px;color:var(--ink-3);width:62px;text-align:right;flex-shrink:0}
+.axis.drive .axis-key,.axis.drive .axis-val{color:var(--ink)}
+.ok .task-rest,.ok .axis.drive .axis-val{color:var(--sea)}
+.ok .axis.drive .bar span{background:var(--sea)}
+.soon .task-rest,.soon .axis.drive .axis-val{color:var(--brass)}
+.soon .axis.drive .bar span{background:var(--brass)}
+.late .task-rest,.late .axis.drive .axis-val{color:var(--magenta)}
+.late .axis.drive .bar span{background:var(--magenta)}
+.task-act{margin-top:9px;display:flex;gap:8px;align-items:center}
+
+/* ---------- boutons ---------- */
+.btn{
+  border-radius:7px;padding:9px 14px;font-size:14px;font-weight:600;
+  border:1px solid var(--ink);background:var(--ink);color:var(--paper)
+}
+.btn.ghost{background:none;color:var(--ink);border-color:var(--rule)}
+.btn.sm{padding:6px 11px;font-size:13px}
+.btn.wide{width:100%;padding:13px}
+.btn:active{opacity:.75}
+.btn:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,.tab:focus-visible{
+  outline:2px solid var(--magenta);outline-offset:2px
+}
+
+/* ---------- formulaires ---------- */
+label{display:block;margin-bottom:11px}
+label>.eyebrow{display:block;margin-bottom:4px}
+input,select{
+  width:100%;padding:10px;border:1px solid var(--rule);border-radius:7px;
+  background:#fff;font-family:var(--display);font-size:16px
+}
+.row{display:flex;gap:10px}
+.row>label{flex:1}
+
+/* ---------- lignes de journal ---------- */
+.trip{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--rule);align-items:baseline}
+.trip:last-child{border-bottom:0}
+.trip-date{font-family:var(--display);font-size:11px;color:var(--ink-3);width:52px;flex-shrink:0}
+.trip-leg{flex:1;font-size:14px;letter-spacing:-.01em}
+.trip-num{font-family:var(--display);font-size:12px;text-align:right;color:var(--ink-2);white-space:nowrap}
+
+/* ---------- divers ---------- */
+.empty{text-align:center;padding:30px 16px;color:var(--ink-2);font-size:14px}
+.empty strong{display:block;color:var(--ink);font-size:15px;margin-bottom:5px}
+.chip{
+  display:inline-block;font-family:var(--display);font-size:10px;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:4px;
+  background:var(--chart);color:var(--ink-2)
+}
+.pick{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--rule);align-items:center}
+.pick:last-child{border-bottom:0}
+.pick input[type=checkbox]{width:20px;height:20px;flex-shrink:0;accent-color:var(--sea)}
+.pick div{flex:1;font-size:14px}
+.pick small{display:block;font-family:var(--display);font-size:11px;color:var(--ink-3)}
+.note{font-size:13px;color:var(--ink-2);margin:0 0 12px}
+
+/* ---------- barre d'onglets ---------- */
+nav{
+  position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--paper);
+  border-top:1px solid var(--rule);padding-bottom:env(safe-area-inset-bottom);z-index:10
+}
+.tab{flex:1;padding:9px 4px 10px;text-align:center;color:var(--ink-3);border-top:2px solid transparent;margin-top:-1px}
+.tab b{display:block;font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.tab svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.7}
+.tab[aria-current=page]{color:var(--ink);border-top-color:var(--magenta)}
+
+/* ---------- feuille modale ---------- */
+dialog{
+  border:0;padding:0;width:100%;max-width:640px;background:var(--paper);
+  border-radius:14px 14px 0 0;margin:auto auto 0;
+}
+dialog::backdrop{background:rgba(10,40,48,.45)}
+.sheet{padding:18px var(--pad) calc(18px + env(safe-area-inset-bottom))}
+.sheet h3{margin:0 0 14px;font-size:17px;letter-spacing:-.01em}
+@media (prefers-reduced-motion:no-preference){
+  dialog[open]{animation:rise .22s ease-out}
+  @keyframes rise{from{transform:translateY(14px);opacity:0}}
+}
+.toast{
+  position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:20px;
+  font-size:13px;z-index:30;white-space:nowrap
+}
+
+/* ---------- barre de retour ---------- */
+.back{display:flex;align-items:center;gap:7px;color:var(--ink-2);font-size:14px;padding:2px 0 12px}
+.back svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2}
+
+/* ---------- bandeau récapitulatif d'une navigation ---------- */
+.recap{display:flex;gap:1px;background:var(--rule);border-radius:9px;overflow:hidden;margin-bottom:12px}
+.recap div{flex:1;background:var(--paper);padding:11px 8px;text-align:center}
+.recap b{display:block;font-family:var(--display);font-size:17px;font-weight:700;letter-spacing:-.02em;margin-top:2px}
+.calc{font-family:var(--display);font-size:10px;color:var(--sea);margin-top:2px}
+
+/* ---------- relevé horaire ---------- */
+.entry{border-bottom:1px solid var(--rule);padding:12px 0}
+.entry:last-child{border-bottom:0;padding-bottom:0}
+.entry:first-child{padding-top:0}
+.entry-top{display:flex;align-items:baseline;gap:9px}
+.entry-h{font-family:var(--display);font-size:15px;font-weight:700;letter-spacing:-.02em}
+.entry-pos{flex:1;font-family:var(--display);font-size:12px;color:var(--ink-2)}
+.entry-meta{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}
+.tag{
+  font-family:var(--display);font-size:10.5px;letter-spacing:.02em;
+  padding:3px 7px;border-radius:4px;background:var(--chart);color:var(--ink-2);white-space:nowrap
+}
+.tag.motor{background:#F2E4CB;color:var(--brass);font-weight:700}
+.tag.obs{background:#F7E1EB;color:var(--magenta);font-weight:600;white-space:normal}
+.entry-obs{margin-top:7px;font-size:13.5px;color:var(--ink);line-height:1.4}
+
+/* ---------- formulaire de relevé ---------- */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.g2>label,.g3>label{margin-bottom:0}
+.gps{
+  display:flex;gap:8px;align-items:center;margin-bottom:11px;
+  padding:10px;border:1px dashed var(--rule);border-radius:8px;background:#fff
+}
+.gps-val{flex:1;font-family:var(--display);font-size:13px;letter-spacing:-.01em}
+.gps-val em{font-style:normal;color:var(--ink-3);font-size:12px}
+.check{display:flex;align-items:center;gap:9px;padding:11px 0;margin-bottom:4px}
+.check input{width:21px;height:21px;flex-shrink:0;accent-color:var(--brass)}
+.check span{font-size:14.5px}
+.sheet-scroll{max-height:60vh;overflow:auto;margin:0 -2px 14px;padding:0 2px}
+.sheet-scroll h2{margin:18px 0 9px;padding-top:12px;border-top:1px solid var(--rule)}
+.seg{display:flex;gap:1px;background:var(--rule);border-radius:8px;overflow:hidden;margin-bottom:11px}
+.seg button{flex:1;padding:10px 6px;background:var(--paper);font-size:13.5px;font-weight:600;color:var(--ink-3)}
+.seg button.on{background:var(--ink);color:var(--paper)}
+input.pb{border-color:var(--magenta)}
+.tag.fix{background:var(--ink);color:var(--paper);font-weight:700}
+.tag.est{background:none;color:var(--ink-2);border:1px dashed var(--ink-3)}
+.entry-pb{margin-top:7px;font-size:13.5px;color:var(--magenta);font-weight:600;line-height:1.4}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow" id="hdrKicker">Carnet de bord</div>
+  <h1 id="hdrName">Anchor</h1>
+  <div class="meter" id="meter"></div>
+</header>
+
+<main>
+  <!-- ============ BORD ============ -->
+  <section id="v-bord">
+    <div id="alerts"></div>
+    <button class="btn wide" id="quickTrip">Ouvrir une navigation</button>
+  </section>
+
+  <!-- ============ NAVIGATIONS ============ -->
+  <section id="v-nav" hidden>
+    <button class="btn wide" id="addTrip">Ouvrir une navigation</button>
+    <h2>Journal</h2>
+    <div class="card" id="tripList"></div>
+  </section>
+
+  <!-- ============ UNE NAVIGATION ============ -->
+  <section id="v-trip" hidden>
+    <button class="back" id="backNav">
+      <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg> Journal
+    </button>
+    <div id="tripDetail"></div>
+  </section>
+
+  <!-- ============ ENTRETIEN ============ -->
+  <section id="v-ent" hidden>
+    <div id="taskList"></div>
+    <button class="btn ghost wide" id="addTasks">Ajouter des tâches</button>
+  </section>
+
+  <!-- ============ BATEAU ============ -->
+  <section id="v-bat" hidden>
+    <h2>Le bateau</h2>
+    <div class="card">
+      <label><span class="eyebrow">Nom</span><input id="fName" placeholder="Sans nom"></label>
+      <label><span class="eyebrow">Modèle</span><input id="fModel" placeholder="Sun Odyssey 349"></label>
+      <label><span class="eyebrow">Moteur</span><input id="fEngine" placeholder="Yanmar 3YM20"></label>
+      <label><span class="eyebrow">Immatriculation</span><input id="fReg" placeholder="LO 123456"></label>
+      <label><span class="eyebrow">Correction de cap par défaut (°)</span>
+        <input id="fDecl" type="number" inputmode="numeric" placeholder="0">
+      </label>
+      <p class="note" style="margin:0">Déclinaison de votre zone plus la déviation du compas, positive vers l'Est. Reprise à chaque relevé, modifiable au cas par cas.</p>
+    </div>
+
+    <h2>Compteurs</h2>
+    <div class="card">
+      <p class="note">Relevez le compteur horaire du moteur et le loch. L'appli ajoute ensuite chaque navigation à ces valeurs.</p>
+      <div class="row">
+        <label><span class="eyebrow">Heures moteur</span><input id="fHours" type="number" inputmode="decimal" step="0.1" placeholder="0"></label>
+        <label><span class="eyebrow">Milles au loch</span><input id="fMiles" type="number" inputmode="decimal" step="1" placeholder="0"></label>
+      </div>
+      <button class="btn wide" id="saveBoat">Enregistrer</button>
+    </div>
+
+    <h2>Vos données</h2>
+    <div class="card">
+      <p class="note">Tout est stocké sur ce téléphone. Exportez régulièrement : le fichier se relit dans n'importe quel tableur et vous rend vos données si vous changez d'outil.</p>
+      <div class="row">
+        <button class="btn ghost" id="expJson" style="flex:1">Exporter (.json)</button>
+        <button class="btn ghost" id="expCsv" style="flex:1">Exporter (.csv)</button>
+      </div>
+      <label style="margin-top:10px"><span class="eyebrow">Réimporter une sauvegarde</span><input id="impFile" type="file" accept=".json"></label>
+    </div>
+
+    <h2>Dépannage</h2>
+    <div class="card">
+      <p class="note">Si l'appli semble figée sur une ancienne version, videz le cache. Vos navigations et votre entretien ne sont pas touchés.</p>
+      <button class="btn ghost wide" id="purge">Vider le cache et recharger</button>
+      <p class="note" style="margin:10px 0 0" id="diag"></p>
+    </div>
+    <p class="note" style="text-align:center" id="version"></p>
+  </section>
+</main>
+
+<nav>
+  <button class="tab" data-v="bord" aria-current="page"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-2.5 5.5L7 17l2.5-5.5z"/></svg><b>Bord</b></button>
+  <button class="tab" data-v="nav"><svg viewBox="0 0 24 24"><path d="M4 18h16M12 3v11M12 14L5 12l7-9M12 14l7-2"/></svg><b>Naviguer</b></button>
+  <button class="tab" data-v="ent"><svg viewBox="0 0 24 24"><path d="M14.5 4a4.5 4.5 0 00-4 6.5L4 17v3h3l6.5-6.5A4.5 4.5 0 1014.5 4z"/></svg><b>Entretien</b></button>
+  <button class="tab" data-v="bat"><svg viewBox="0 0 24 24"><path d="M3 16h18l-2.5 5H5.5zM6 16V8h9l4 8M11 8V4"/></svg><b>Bateau</b></button>
+</nav>
+
+<dialog id="sheet"><div class="sheet" id="sheetBody"></div></dialog>
+
+<script>
+"use strict";
+const VERSION = "0.4.0";
+
+/* =========================================================
+   1. Stockage — window.storage (aperçu Claude) sinon localStorage
+   ========================================================= */
+const KEY = "anchor:v1";
+const Store = {
+  async load(){
+    try{ if(window.storage){ const r = await window.storage.get(KEY); if(r&&r.value) return JSON.parse(r.value); } }catch(e){}
+    try{ const s = localStorage.getItem(KEY); if(s) return JSON.parse(s); }catch(e){}
+    return null;
+  },
+  async save(d){
+    const s = JSON.stringify(d);
+    try{ if(window.storage){ await window.storage.set(KEY, s); return; } }catch(e){}
+    try{ localStorage.setItem(KEY, s); }catch(e){ toast("Mémoire pleine — exportez vos données"); }
+  }
+};
+
+/* =========================================================
+   2. Référentiels marins
+   ========================================================= */
+const CATALOGUE = [
+ {c:"Moteur",       n:"Vidange huile moteur + filtre",         h:150,  mi:null, mo:12,  on:1},
+ {c:"Moteur",       n:"Filtre à gasoil sur moteur",            h:250,  mi:null, mo:12,  on:1},
+ {c:"Moteur",       n:"Pré-filtre décanteur (Racor)",          h:250,  mi:null, mo:12,  on:1},
+ {c:"Moteur",       n:"Contrôle de la turbine d'eau de mer",   h:150,  mi:null, mo:12,  on:1},
+ {c:"Moteur",       n:"Remplacement de la turbine",            h:500,  mi:null, mo:24,  on:1},
+ {c:"Moteur",       n:"Courroie d'alternateur",                h:500,  mi:null, mo:24,  on:1},
+ {c:"Moteur",       n:"Anode de l'échangeur",                  h:250,  mi:null, mo:12,  on:1},
+ {c:"Moteur",       n:"Liquide de refroidissement",            h:1000, mi:null, mo:24,  on:0},
+ {c:"Moteur",       n:"Jeu aux soupapes",                      h:1000, mi:null, mo:null,on:0},
+ {c:"Transmission", n:"Huile de sail-drive ou d'inverseur",    h:200,  mi:null, mo:12,  on:1},
+ {c:"Transmission", n:"Anode de sail-drive",                   h:null, mi:null, mo:6,   on:1},
+ {c:"Transmission", n:"Soufflet de sail-drive",                h:null, mi:null, mo:84,  on:1},
+ {c:"Transmission", n:"Presse-étoupe ou joint tournant",       h:null, mi:null, mo:12,  on:0},
+ {c:"Transmission", n:"Hélice : nettoyage et graissage",       h:null, mi:400,  mo:12,  on:1},
+ {c:"Carène",       n:"Carénage et antifouling",               h:null, mi:null, mo:12,  on:1},
+ {c:"Carène",       n:"Anodes de coque",                       h:null, mi:null, mo:12,  on:1},
+ {c:"Carène",       n:"Passe-coques et vannes",                h:null, mi:null, mo:12,  on:1},
+ {c:"Gréement",     n:"Contrôle visuel du gréement dormant",   h:null, mi:1000, mo:12,  on:1},
+ {c:"Gréement",     n:"Remplacement du gréement dormant",      h:null, mi:null, mo:120, on:1},
+ {c:"Gréement",     n:"Révision des winches",                  h:null, mi:1500, mo:12,  on:1},
+ {c:"Gréement",     n:"Voiles : coutures et ralingues",        h:null, mi:2000, mo:12,  on:1},
+ {c:"Gréement",     n:"Drisses et écoutes : usure",            h:null, mi:3000, mo:24,  on:0},
+ {c:"Sécurité",     n:"Révision du radeau de survie",          h:null, mi:null, mo:36,  on:1},
+ {c:"Sécurité",     n:"Péremption des fusées",                 h:null, mi:null, mo:36,  on:1},
+ {c:"Sécurité",     n:"Contrôle des extincteurs",              h:null, mi:null, mo:12,  on:1},
+ {c:"Sécurité",     n:"Percuteurs des gilets gonflables",      h:null, mi:null, mo:12,  on:1},
+ {c:"Sécurité",     n:"Durite de gaz",                         h:null, mi:null, mo:60,  on:1},
+ {c:"Sécurité",     n:"Batterie de la balise EPIRB",           h:null, mi:null, mo:60,  on:0},
+ {c:"Électricité",  n:"Contrôle des batteries",                h:null, mi:null, mo:6,   on:1},
+ {c:"Électricité",  n:"Serrage des cosses",                    h:null, mi:null, mo:12,  on:0}
+];
+const CATS = ["Moteur","Transmission","Carène","Gréement","Sécurité","Électricité"];
+
+/* Rose des vents à 16 quarts, notation française (O = ouest) */
+const ROSE = ["","N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSO","SO","OSO","O","ONO","NO","NNO"];
+
+/* Échelle de Douglas — état de la mer */
+const DOUGLAS = [
+  ["","—"],["0","Calme, miroir"],["1","Ridée — 0 à 0,1 m"],["2","Belle — 0,1 à 0,5 m"],
+  ["3","Peu agitée — 0,5 à 1,25 m"],["4","Agitée — 1,25 à 2,5 m"],["5","Forte — 2,5 à 4 m"],
+  ["6","Très forte — 4 à 6 m"],["7","Grosse — 6 à 9 m"],["8","Très grosse — 9 à 14 m"],
+  ["9","Énorme — plus de 14 m"]
+];
+
+const CIEL = ["","Clair","Peu nuageux","Nuageux","Couvert","Brume","Brouillard","Pluie","Averses","Grain","Orage"];
+
+/* Visibilité — repères pratiques du bord */
+const VISI = [["","—"],["1","Très mauvaise — moins de 0,5 NM"],["2","Mauvaise — 0,5 à 2 NM"],
+  ["3","Médiocre — 2 à 5 NM"],["4","Bonne — 5 à 10 NM"],["5","Très bonne — plus de 10 NM"]];
+
+/* Hauteur de houle, en mètres */
+const HOULE = ["","0","0,5","1","1,5","2","2,5","3","4","5","6","8"];
+
+/* =========================================================
+   3. État
+   ========================================================= */
+let S = null, openTripId = null;
+const uid = () => Math.random().toString(36).slice(2,10);
+const today = () => new Date().toISOString().slice(0,10);
+const nowHM = () => new Date().toTimeString().slice(0,5);
+
+function blank(){
+  return {
+    v:2,
+    boat:{name:"", model:"", engine:"", reg:"", decl:0, baseHours:0, baseMiles:0, since:today()},
+    trips:[], tasks:[], jobs:[]
+  };
+}
+function migrate(d){
+  /* Des données partielles ou abîmées ne doivent jamais empêcher l'appli de démarrer. */
+  if(!d || typeof d !== "object") return blank();
+  const b = blank();
+  d.boat  = Object.assign({}, b.boat, d.boat || {});
+  d.trips = Array.isArray(d.trips) ? d.trips : [];
+  d.tasks = Array.isArray(d.tasks) ? d.tasks : [];
+  d.jobs  = Array.isArray(d.jobs)  ? d.jobs  : [];
+  d.boat.reg = d.boat.reg || ""; if(d.boat.decl == null) d.boat.decl = 0;
+  d.trips.forEach(t => {
+    t.entries = Array.isArray(t.entries) ? t.entries : [];
+    t.note = t.note || ""; t.crew = t.crew || ""; t.t0 = t.t0 || "";
+    t.date = t.date || today();
+    t.entries.forEach(e => { if(e.d == null) e.d = 0; if(!e.t) e.t = "00:00"; if(!e.id) e.id = uid(); });
+  });
+  d.v = 2; return d;
+}
+function seedTasks(){
+  return CATALOGUE.filter(t=>t.on).map(t=>({
+    id:uid(), name:t.n, cat:t.c, h:t.h, mi:t.mi, mo:t.mo, last:null
+  }));
+}
+
+/* =========================================================
+   4. Coordonnées, distances, calculs
+   ========================================================= */
+/* Accepte 47°32.45'N · 4732.45N · 47 32.45 N · 47.5408 · avec O ou W pour ouest */
+function parseCoord(s, isLat){
+  if(s==null) return null;
+  s = String(s).trim().toUpperCase().replace(/,/g,".");
+  if(!s) return null;
+  const hemi = (s.match(/[NSEWO](?![0-9])|^[NSEWO]/)||[])[0];
+  s = s.replace(/[NSEWO°'′"″]/g," ").trim();
+  const p = s.split(/[\s:]+/).filter(Boolean).map(Number);
+  if(!p.length || p.some(isNaN)) return null;
+  const lim = isLat ? 90 : 180;
+  let v;
+  if(p.length === 1){
+    const a = Math.abs(p[0]);
+    if(a > lim){
+      /* au-delà des bornes, c'est le format compact des GPS : DDMM.mmm ou DDDMM.mmm */
+      const deg = Math.floor(a/100), min = a - deg*100;
+      if(min >= 60) return null;
+      v = deg + min/60;
+    } else v = a;
+  } else {
+    if(p[1] >= 60 || (p[2]||0) >= 60) return null;
+    v = Math.abs(p[0]) + p[1]/60 + (p[2]||0)/3600;
+  }
+  if(v > lim) return null;
+  let sign = p[0] < 0 ? -1 : 1;
+  if(hemi==="S"||hemi==="W"||hemi==="O") sign = -1;
+  return sign*v;
+}
+function fmtCoord(v, isLat){
+  if(v==null || isNaN(v)) return "";
+  const h = isLat ? (v<0?"S":"N") : (v<0?"O":"E");
+  const a = Math.abs(v), d = Math.floor(a), m = (a-d)*60;
+  return `${String(d).padStart(isLat?2:3,"0")}°${m.toFixed(2).padStart(5,"0")}'${h}`;
+}
+const hasPos = e => e && e.lat!=null && e.lon!=null;
+/* Un relevé porte un numéro de jour (0 = jour du départ) : une traversée passe minuit. */
+const minOf = e => (e.d||0)*1440 + (+e.t.slice(0,2))*60 + (+e.t.slice(3,5));
+const dayISO = (iso, n) => { const d = new Date(iso+"T00:00:00"); d.setDate(d.getDate()+(n||0));
+  return d.toISOString().slice(0,10); };
+/* Orthodromie, résultat en milles nautiques */
+function nmBetween(a,b){
+  const R = 3440.065, r = x => x*Math.PI/180;
+  const dLat = r(b.lat-a.lat), dLon = r(b.lon-a.lon);
+  const x = Math.sin(dLat/2)**2 + Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(x)));
+}
+const sortEntries = t => [...(t.entries||[])].sort((a,b)=>minOf(a)-minOf(b));
+
+/* Point estimé : depuis le dernier point connu, un cap vrai et une distance.
+   C'est le calcul de l'estime — celui qu'on fait au compas et au loch. */
+function drPosition(prev, cv, dist){
+  if(!prev || !hasPos(prev) || cv==null || !dist) return null;
+  const r = Math.PI/180;
+  const lat2 = prev.lat + dist*Math.cos(cv*r)/60;
+  const latm = (prev.lat + lat2)/2;
+  const cosm = Math.cos(latm*r);
+  if(Math.abs(cosm) < 1e-6) return null;
+  return {lat: lat2, lon: prev.lon + dist*Math.sin(cv*r)/(60*cosm)};
+}
+/* Cap vrai = cap compas + correction (déclinaison + déviation), Est positif. */
+const capVrai = (cc, corr) => cc==null ? null : ((cc + (+corr||0)) % 360 + 360) % 360;
+
+/* Distance parcourue déduite des positions successives */
+function calcMiles(t){
+  const pts = sortEntries(t).filter(hasPos);
+  if(pts.length < 2) return null;
+  let d = 0;
+  for(let i=1;i<pts.length;i++) d += nmBetween(pts[i-1], pts[i]);
+  return d;
+}
+/* Distance au loch : sans GPS, c'est la seule source fiable. */
+function calcLoch(t){
+  const l = sortEntries(t).filter(e => e.loch != null && e.loch !== "");
+  if(l.length < 2) return null;
+  const d = +l[l.length-1].loch - +l[0].loch;
+  return d > 0 ? d : null;
+}
+/* Distance depuis le relevé précédent, quelle que soit la source. */
+function stepDist(t, e){
+  const arr = sortEntries(t);
+  const i = arr.findIndex(x => x.id === e.id);
+  const prev = i > 0 ? arr[i-1] : null;
+  if(!prev) return null;
+  if(prev.loch != null && prev.loch !== "" && e.loch != null && e.loch !== "")
+    return Math.max(0, +e.loch - +prev.loch);
+  if(hasPos(prev) && hasPos(e)) return nmBetween(prev, e);
+  return null;
+}
+/* Heures moteur déduites : un relevé « moteur en marche » vaut jusqu'au relevé suivant */
+function calcEngine(t){
+  const e = sortEntries(t);
+  if(e.length < 2) return null;
+  let h = 0, any = false;
+  for(let i=1;i<e.length;i++){
+    if(!e[i-1].moteur) continue;
+    any = true;
+    h += (minOf(e[i]) - minOf(e[i-1]))/60;
+  }
+  return any ? h : null;
+}
+/* Jour proposé pour un nouveau relevé : si l'heure recule, on est passé à J+1. */
+function nextDay(t, hm){
+  const last = sortEntries(t).pop();
+  if(!last) return 0;
+  const cur = (+hm.slice(0,2))*60 + (+hm.slice(3,5));
+  const lastHM = (+last.t.slice(0,2))*60 + (+last.t.slice(3,5));
+  return (last.d||0) + (cur < lastHM ? 1 : 0);
+}
+
+/* --- compteurs cumulés du bateau --- */
+const totals = () => ({
+  h: S.boat.baseHours + S.trips.reduce((a,t)=>a+(+t.h||0),0),
+  mi: S.boat.baseMiles + S.trips.reduce((a,t)=>a+(+t.mi||0),0)
+});
+
+/* --- échéance : le premier des trois compteurs atteint --- */
+function addMonths(iso, m){
+  const d = new Date(iso+"T00:00:00"); const day = d.getDate();
+  d.setMonth(d.getMonth()+m);
+  if(d.getDate()<day) d.setDate(0);
+  return d;
+}
+function due(task){
+  const T = totals();
+  const base = task.last || {date:S.boat.since, h:S.boat.baseHours, mi:S.boat.baseMiles};
+  const axes = [];
+  if(task.h)  axes.push({k:"HRS", ratio:(T.h-base.h)/task.h,   rest:base.h+task.h-T.h,   u:"h"});
+  if(task.mi) axes.push({k:"MIL", ratio:(T.mi-base.mi)/task.mi, rest:base.mi+task.mi-T.mi, u:"NM"});
+  if(task.mo){
+    const end = addMonths(base.date, task.mo);
+    const days = Math.round((end - new Date(today()+"T00:00:00"))/864e5);
+    axes.push({k:"CAL", ratio:1-days/(task.mo*30.44), rest:days, u:"j", date:end});
+  }
+  if(!axes.length) return null;
+  const drive = axes.reduce((a,b)=>b.ratio>a.ratio?b:a);
+  axes.forEach(a=>a.drive = a===drive);
+  return {axes, drive, ratio:drive.ratio,
+          state: drive.ratio>=1 ? "late" : drive.ratio>=.8 ? "soon" : "ok"};
+}
+const fmt = n => (Math.round(n*10)/10).toLocaleString("fr-FR");
+const esc = s => String(s??"").replace(/[<>&"]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c]));
+const dmy = iso => new Date(iso+"T00:00:00").toLocaleDateString("fr-FR");
+
+/* =========================================================
+   5. Rendu
+   ========================================================= */
+const $ = s => document.querySelector(s);
+
+function drawMeter(){
+  const T = totals();
+  const drum = (val, dec) => {
+    const s = Math.abs(Math.round(val*(dec?10:1))).toString().padStart(dec?6:5,"0");
+    return [...s].map((d,i)=>
+      `<span class="digit${dec && i===s.length-1 ? " tenth":""}">${d}</span>`).join("");
+  };
+  $("#meter").innerHTML = `
+    <div class="meter-unit">
+      <div class="eyebrow">Heures moteur</div>
+      <div class="meter-drum">${drum(T.h,1)}</div>
+      <div class="meter-cap">${S.trips.length} navigation${S.trips.length>1?"s":""}</div>
+    </div>
+    <div class="meter-unit">
+      <div class="eyebrow">Milles au loch</div>
+      <div class="meter-drum">${drum(T.mi,0)}</div>
+      <div class="meter-cap">depuis le ${dmy(S.boat.since)}</div>
+    </div>`;
+  $("#hdrName").textContent = S.boat.name || "Anchor";
+  $("#hdrKicker").textContent = S.boat.model || "Carnet de bord";
+}
+
+function taskHTML(t){
+  const d = due(t);
+  if(!d) return "";
+  const rest = d.drive.rest;
+  const label = rest < 0 ? `dépassé de ${fmt(-rest)} ${d.drive.u}` : `reste ${fmt(rest)} ${d.drive.u}`;
+  const axes = d.axes.map(a=>`
+    <div class="axis${a.drive?" drive":""}">
+      <span class="axis-key">${a.k}</span>
+      <span class="bar"><span style="width:${Math.max(0,Math.min(100,a.ratio*100))}%"></span></span>
+      <span class="axis-val">${a.k==="CAL"
+        ? a.date.toLocaleDateString("fr-FR",{month:"short",year:"2-digit"})
+        : fmt(Math.max(0,a.rest))+" "+a.u}</span>
+    </div>`).join("");
+  return `<div class="task ${d.state}">
+    <div class="task-top"><span class="task-name">${esc(t.name)}</span><span class="task-rest">${label}</span></div>
+    <div class="axes">${axes}</div>
+    <div class="task-act">
+      <button class="btn sm ghost" data-done="${t.id}">Je viens de le faire</button>
+      ${t.last?`<span class="eyebrow">fait le ${dmy(t.last.date)}</span>`:""}
+    </div></div>`;
+}
+
+function drawBord(){
+  const list = S.tasks.map(t=>({t, d:due(t)})).filter(x=>x.d).sort((a,b)=>b.d.ratio-a.d.ratio);
+  const urgent = list.filter(x=>x.d.state!=="ok").slice(0,6);
+  const late = list.filter(x=>x.d.state==="late").length;
+  if(!S.tasks.length){
+    $("#alerts").innerHTML = `<div class="card empty"><strong>Aucune tâche suivie</strong>
+      Ouvrez l'onglet Entretien pour charger le programme d'un voilier à moteur diesel.</div>`;
+    return;
+  }
+  $("#alerts").innerHTML = urgent.length
+    ? `<h2>${late ? late+" échéance"+(late>1?"s":"")+" dépassée"+(late>1?"s":"") : "À prévoir"}</h2>
+       <div class="card">${urgent.map(x=>taskHTML(x.t)).join("")}</div>`
+    : `<div class="card empty"><strong>Rien à signaler</strong>
+       Prochaine échéance : ${esc(list[0].t.name.toLowerCase())}, ${fmt(list[0].d.drive.rest)} ${list[0].d.drive.u}.</div>`;
+}
+
+function drawTrips(){
+  if(!S.trips.length){
+    $("#tripList").innerHTML = `<div class="empty"><strong>Journal vide</strong>
+      Ouvrez une navigation au départ du port, puis ajoutez un relevé chaque heure.</div>`;
+    return;
+  }
+  $("#tripList").innerHTML = [...S.trips].sort((a,b)=>(b.date+b.t0).localeCompare(a.date+a.t0)).map(t=>`
+    <button class="trip" data-trip="${t.id}" style="width:100%;text-align:left">
+      <span class="trip-date">${new Date(t.date+"T00:00:00").toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})}</span>
+      <span class="trip-leg">${esc(t.from||"—")} → ${esc(t.to||"—")}
+        ${t.entries.length?`<span class="chip" style="margin-left:6px">${t.entries.length} relevés</span>`:""}</span>
+      <span class="trip-num">${fmt(t.mi||0)} NM · ${fmt(t.h||0)} h</span>
+    </button>`).join("");
+}
+
+function entryHTML(e, t){
+  const tags = [];
+  if(e.cv!=null && e.cv!=="")      tags.push(`Cv ${Math.round(e.cv)}°`);
+  else if(e.cc!=null && e.cc!=="") tags.push(`Cc ${Math.round(e.cc)}°`);
+  if(e.cc!=null && e.cc!=="" && e.cv!=null && e.cv!=="") tags.push(`Cc ${Math.round(e.cc)}°`);
+  if(e.loch!=null && e.loch!=="")  tags.push(`Loch ${fmt(e.loch)}`);
+  if(e.sog)      tags.push(`${fmt(e.sog)} nds`);
+  if(e.ventDir||e.ventKt) tags.push(`Vent ${e.ventDir||""} ${e.ventKt?e.ventKt+" nds":""}`.trim());
+  if(e.mer)      tags.push(`Mer ${e.mer}`);
+  if(e.houleDir||e.houleM) tags.push(`Houle ${e.houleDir||""} ${e.houleM?e.houleM+" m":""}`.trim()
+                                     + (e.houleS?` / ${e.houleS} s`:""));
+  if(e.hpa){
+    const prev = t ? sortEntries(t).filter(x=>x.hpa && minOf(x)<minOf(e)).pop() : null;
+    const dp = prev ? e.hpa - prev.hpa : 0;
+    tags.push(`${e.hpa} hPa${dp ? (dp>0?" ▲ +":" ▼ ")+dp : ""}`);
+  }
+  if(e.ciel)     tags.push(esc(e.ciel));
+  if(e.visi)     tags.push(`Visi ${(VISI.find(v=>v[0]===e.visi)||["",""])[1].split(" — ")[0]}`);
+  if(e.voilure)  tags.push(esc(e.voilure));
+  const step = t ? stepDist(t, e) : null;
+  return `<div class="entry">
+    <div class="entry-top">
+      <span class="entry-h">${e.t}</span>
+      ${e.d ? `<span class="tag">J+${e.d}</span>` : ""}
+      <span class="entry-pos">${hasPos(e)?fmtCoord(e.lat,1)+"  "+fmtCoord(e.lon,0):"<em>sans position</em>"}</span>
+      <button class="btn sm ghost" data-edit="${e.id}">Modifier</button>
+    </div>
+    <div class="entry-meta">
+      ${hasPos(e) ? `<span class="tag ${e.fix==="est"?"est":"fix"}">${e.fix==="est"?"estimé":"observé"}</span>` : ""}
+      ${e.moteur?'<span class="tag motor">moteur</span>':""}
+      ${step!=null?`<span class="tag">+${fmt(step)} NM</span>`:""}
+      ${tags.map(x=>`<span class="tag">${x}</span>`).join("")}
+    </div>
+    ${e.obs?`<div class="entry-obs">${esc(e.obs)}</div>`:""}
+    ${e.pb?`<div class="entry-pb">⚠ ${esc(e.pb)}</div>`:""}
+  </div>`;
+}
+
+function drawTrip(){
+  const t = S.trips.find(x=>x.id===openTripId);
+  if(!t){ show("nav"); return; }
+  const cm = calcMiles(t), cl = calcLoch(t), ce = calcEngine(t);
+  const cd = cl != null ? cl : cm;                 // le loch prime : il est mesuré, pas déduit
+  const src = cl != null ? "loch" : "GPS";
+  const entries = sortEntries(t);
+  $("#tripDetail").innerHTML = `
+    <h2 style="margin-top:0">${esc(t.from||"—")} → ${esc(t.to||"—")}</h2>
+    <p class="note">${dmy(t.date)}${t.t0?" · départ "+t.t0:""}${t.crew?" · "+esc(t.crew):""}</p>
+
+    <div class="recap">
+      <div><span class="eyebrow">Milles</span><b>${fmt(t.mi||0)}</b>
+        ${cd!=null?`<div class="calc">${src} : ${fmt(cd)}</div>`:""}</div>
+      <div><span class="eyebrow">Moteur</span><b>${fmt(t.h||0)} h</b>
+        ${ce!=null?`<div class="calc">relevés : ${fmt(ce)} h</div>`:""}</div>
+      <div><span class="eyebrow">Relevés</span><b>${entries.length}</b></div>
+    </div>
+
+    ${(cd!=null||ce!=null)?`<button class="btn ghost wide" id="applyCalc" style="margin-bottom:12px">
+      Reprendre les valeurs calculées${cd!=null?` — ${fmt(cd)} NM`:""}${ce!=null?` · ${fmt(ce)} h`:""}
+    </button>`:""}
+
+    <button class="btn wide" id="addEntry">Relevé maintenant</button>
+
+    <h2>Relevés horaires</h2>
+    <div class="card">${entries.length ? entries.map(x=>entryHTML(x,t)).join("")
+      : `<div class="empty"><strong>Aucun relevé</strong>
+         Un relevé par heure : position, cap, vent, pression, état de la mer.</div>`}</div>
+
+    <h2>La navigation</h2>
+    <div class="card">
+      <div class="row">
+        <label><span class="eyebrow">Date</span><input id="eD" type="date" value="${t.date}"></label>
+        <label><span class="eyebrow">Heure de départ</span><input id="eT0" type="time" value="${t.t0||""}"></label>
+      </div>
+      <div class="row">
+        <label><span class="eyebrow">Port de départ</span><input id="eF" value="${esc(t.from)}"></label>
+        <label><span class="eyebrow">Port d'arrivée</span><input id="eTo" value="${esc(t.to)}"></label>
+      </div>
+      <div class="row">
+        <label><span class="eyebrow">Milles</span><input id="eM" type="number" inputmode="decimal" step="0.1" value="${t.mi||""}"></label>
+        <label><span class="eyebrow">Heures moteur</span><input id="eH" type="number" inputmode="decimal" step="0.1" value="${t.h||""}"></label>
+      </div>
+      <label><span class="eyebrow">Équipage</span><input id="eC" value="${esc(t.crew)}" placeholder="3 à bord"></label>
+      <label><span class="eyebrow">Observations générales</span><input id="eN" value="${esc(t.note)}" placeholder="Ris pris à 16 h, mer creuse au raz"></label>
+      <button class="btn wide" id="saveTrip">Enregistrer</button>
+      <button class="btn ghost wide" id="delTrip" style="margin-top:8px;color:var(--magenta);border-color:var(--magenta)">Supprimer cette navigation</button>
+    </div>`;
+
+  $("#addEntry").onclick = () => entrySheet(t.id, null);
+  $("#saveTrip").onclick = async () => {
+    Object.assign(t, {date:$("#eD").value||t.date, t0:$("#eT0").value, from:$("#eF").value.trim(),
+      to:$("#eTo").value.trim(), mi:+$("#eM").value||0, h:+$("#eH").value||0,
+      crew:$("#eC").value.trim(), note:$("#eN").value.trim()});
+    await persist(); toast("Navigation enregistrée");
+  };
+  $("#delTrip").onclick = async () => {
+    if(!confirm("Supprimer cette navigation et ses relevés ?")) return;
+    S.trips = S.trips.filter(x=>x.id!==t.id); openTripId=null;
+    await persist(); show("nav"); toast("Navigation supprimée");
+  };
+  const ac = $("#applyCalc");
+  if(ac) ac.onclick = async () => {
+    if(cd!=null) t.mi = Math.round(cd*10)/10;
+    if(ce!=null) t.h  = Math.round(ce*10)/10;
+    await persist(); toast("Compteurs mis à jour");
+  };
+  document.querySelectorAll("[data-edit]").forEach(b =>
+    b.onclick = () => entrySheet(t.id, b.dataset.edit));
+}
+
+function drawTasks(){
+  if(!S.tasks.length){
+    $("#taskList").innerHTML = `<div class="card empty"><strong>Programme d'entretien vide</strong>
+      Chargez le programme type d'un voilier à moteur diesel inboard, puis retirez ce qui ne vous concerne pas.
+      <div style="margin-top:14px"><button class="btn" id="seed">Charger le programme type</button></div></div>`;
+    $("#seed").onclick = async()=>{ S.tasks = seedTasks(); await persist(); toast(S.tasks.length+" tâches chargées"); };
+    return;
+  }
+  $("#taskList").innerHTML = CATS.map(c=>{
+    const items = S.tasks.filter(t=>t.cat===c).map(t=>({t,d:due(t)})).filter(x=>x.d)
+      .sort((a,b)=>b.d.ratio-a.d.ratio);
+    return items.length ? `<h2>${c}</h2><div class="card">${items.map(x=>taskHTML(x.t)).join("")}</div>` : "";
+  }).join("");
+}
+
+function draw(){
+  drawMeter(); drawBord(); drawTrips(); drawTasks(); fillBoat();
+  if(openTripId && !$("#v-trip").hidden) drawTrip();
+}
+async function persist(){ await Store.save(S); draw(); }
+
+function show(v){
+  ["bord","nav","trip","ent","bat"].forEach(x => $("#v-"+x).hidden = (x!==v));
+  document.querySelectorAll(".tab").forEach(x=>{
+    x.removeAttribute("aria-current");
+    if(x.dataset.v === (v==="trip"?"nav":v)) x.setAttribute("aria-current","page");
+  });
+  window.scrollTo(0,0);
+}
+
+/* =========================================================
+   6. Feuilles modales
+   ========================================================= */
+function openSheet(html, after){
+  $("#sheetBody").innerHTML = html;
+  $("#sheet").showModal();
+  if(after) after();
+}
+const closeSheet = () => $("#sheet").close();
+$("#sheet").addEventListener("click", e => { if(e.target.id==="sheet") closeSheet(); });
+
+function toast(msg){
+  const el = document.createElement("div");
+  el.className = "toast"; el.textContent = msg; el.setAttribute("role","status");
+  document.body.appendChild(el); setTimeout(()=>el.remove(), 2600);
+}
+
+/* --- ouvrir une navigation --- */
+function tripSheet(){
+  openSheet(`
+    <h3>Ouvrir une navigation</h3>
+    <div class="g2" style="margin-bottom:11px">
+      <label><span class="eyebrow">Date</span><input id="tD" type="date" value="${today()}"></label>
+      <label><span class="eyebrow">Heure de départ</span><input id="tT" type="time" value="${nowHM()}"></label>
+    </div>
+    <div class="g2" style="margin-bottom:11px">
+      <label><span class="eyebrow">Port de départ</span><input id="tF" placeholder="La Trinité"></label>
+      <label><span class="eyebrow">Port d'arrivée</span><input id="tTo" placeholder="Belle-Île"></label>
+    </div>
+    <label><span class="eyebrow">Équipage</span><input id="tC" placeholder="3 à bord"></label>
+    <div class="row" style="margin-top:4px">
+      <button class="btn ghost" id="tX" style="flex:1">Annuler</button>
+      <button class="btn" id="tOK" style="flex:2">Ouvrir</button>
+    </div>`, () => {
+    $("#tX").onclick = closeSheet;
+    $("#tOK").onclick = async () => {
+      const t = {id:uid(), date:$("#tD").value||today(), t0:$("#tT").value, from:$("#tF").value.trim(),
+                 to:$("#tTo").value.trim(), mi:0, h:0, crew:$("#tC").value.trim(), note:"", entries:[]};
+      S.trips.push(t); openTripId = t.id;
+      closeSheet(); await persist(); show("trip"); drawTrip();
+      toast("Navigation ouverte — ajoutez un relevé");
+    };
+  });
+}
+
+/* --- relevé horaire --- */
+function entrySheet(tripId, entryId){
+  const t = S.trips.find(x=>x.id===tripId);
+  const e = entryId ? t.entries.find(x=>x.id===entryId) : null;
+  const arr = sortEntries(t);
+  const last = e ? arr[arr.findIndex(x=>x.id===e.id)-1] : arr[arr.length-1];
+  const prevPos = [...arr].reverse().find(x => hasPos(x) && (!e || x.id!==e.id));
+  const opt = (a,val) => a.map(o => {
+    const [v,l] = Array.isArray(o) ? o : [o, o||"—"];
+    return `<option value="${v}"${String(val??"")===v?" selected":""}>${l}</option>`;
+  }).join("");
+  const V = (k, fb) => e ? (e[k] ?? "") : (fb ?? "");
+
+  openSheet(`
+    <h3>${e ? "Relevé de "+e.t : "Relevé horaire"}</h3>
+
+    <div class="g3" style="margin-bottom:11px">
+      <label><span class="eyebrow">Heure</span><input id="rT" type="time" value="${e?e.t:nowHM()}"></label>
+      <label><span class="eyebrow">Loch NM</span><input id="rL" type="number" inputmode="decimal" step="0.1"
+        placeholder="${last&&last.loch!=null?last.loch:"total"}" value="${V("loch")}"></label>
+      <label><span class="eyebrow">Vitesse nds</span><input id="rS" type="number" inputmode="decimal" step="0.1" value="${V("sog")}"></label>
+    </div>
+
+    <div class="sheet-scroll">
+      <div class="seg" id="rFix">
+        <button type="button" data-fix="obs" class="${(e?e.fix:"obs")!=="est"?"on":""}">Point observé</button>
+        <button type="button" data-fix="est" class="${(e?e.fix:"")==="est"?"on":""}">Point estimé</button>
+      </div>
+      <div class="gps">
+        <div class="gps-val" id="gpsVal">${e&&hasPos(e)
+          ? fmtCoord(e.lat,1)+" &nbsp; "+fmtCoord(e.lon,0) : "<em>Aucune position</em>"}</div>
+        <button class="btn sm" id="gpsBtn">GPS</button>
+        <button class="btn sm ghost" id="drBtn">Estime</button>
+      </div>
+      <div class="g2" style="margin-bottom:4px">
+        <label><span class="eyebrow">Latitude</span><input id="rLa" placeholder="47°32.45'N"
+          value="${e&&e.lat!=null?fmtCoord(e.lat,1):""}"></label>
+        <label><span class="eyebrow">Longitude</span><input id="rLo" placeholder="003°08.12'O"
+          value="${e&&e.lon!=null?fmtCoord(e.lon,0):""}"></label>
+      </div>
+      <p class="note" id="drHint" style="margin:0 0 12px"></p>
+
+      <h2>Route</h2>
+      <div class="g3" style="margin-bottom:4px">
+        <label><span class="eyebrow">Cap compas</span><input id="rCc" type="number" inputmode="numeric" min="0" max="359"
+          value="${V("cc", last?last.cc??"":"")}"></label>
+        <label><span class="eyebrow">Correction °</span><input id="rW" type="number" inputmode="numeric"
+          value="${e?(e.corr??""):(S.boat.decl??"")}" placeholder="0"></label>
+        <label><span class="eyebrow">Cap vrai</span><input id="rCv" type="number" inputmode="numeric" min="0" max="359"
+          value="${V("cv")}"></label>
+      </div>
+      <p class="note" id="cvHint" style="margin:0 0 12px">Correction : déclinaison + déviation, positive vers l'Est.</p>
+
+      <h2>Conditions</h2>
+      <div class="g3" style="margin-bottom:11px">
+        <label><span class="eyebrow">Vent</span><select id="rVd">${opt(ROSE, V("ventDir", last?last.ventDir:""))}</select></label>
+        <label><span class="eyebrow">Force nds</span><input id="rVk" type="number" inputmode="numeric" value="${V("ventKt", last?last.ventKt??"":"")}"></label>
+        <label><span class="eyebrow">Pression hPa</span><input id="rP" type="number" inputmode="numeric" placeholder="1013"
+          value="${V("hpa", last?last.hpa??"":"")}"></label>
+      </div>
+      <label><span class="eyebrow">Mer du vent (Douglas)</span><select id="rMe">${opt(DOUGLAS, V("mer", last?last.mer:""))}</select></label>
+      <div class="g3" style="margin-bottom:11px">
+        <label><span class="eyebrow">Houle — direction</span><select id="rHd">${opt(ROSE, V("houleDir", last?last.houleDir:""))}</select></label>
+        <label><span class="eyebrow">Hauteur m</span><select id="rHm">${opt(HOULE, V("houleM", last?last.houleM:""))}</select></label>
+        <label><span class="eyebrow">Période s</span><input id="rHs" type="number" inputmode="numeric" value="${V("houleS", last?last.houleS??"":"")}"></label>
+      </div>
+      <div class="g2" style="margin-bottom:11px">
+        <label><span class="eyebrow">Temps</span><select id="rCi">${opt(CIEL, V("ciel", last?last.ciel:""))}</select></label>
+        <label><span class="eyebrow">Visibilité</span><select id="rVi">${opt(VISI, V("visi", last?last.visi:""))}</select></label>
+      </div>
+
+      <h2>À bord</h2>
+      <label><span class="eyebrow">Voilure</span><input id="rVo" placeholder="GV 1 ris + génois"
+        value="${esc(V("voilure", last?last.voilure:""))}"></label>
+      <label class="check"><input type="checkbox" id="rMo" ${e?(e.moteur?"checked":""):(last&&last.moteur?"checked":"")}>
+        <span>Moteur en marche</span></label>
+      <label><span class="eyebrow">Observations</span>
+        <input id="rO" placeholder="Cargo croisé à 2 NM, phare des Poulains par le travers" value="${esc(V("obs"))}"></label>
+      <label><span class="eyebrow">Problème, avarie, incident</span>
+        <input id="rPb" class="pb" placeholder="Enrouleur dur, fuite au presse-étoupe" value="${esc(V("pb"))}"></label>
+
+      <label><span class="eyebrow">Jour de la traversée</span>
+        <select id="rJ">${[0,1,2,3,4,5,6,7,8,9].map(n=>
+          `<option value="${n}"${(e?(e.d||0):nextDay(t,nowHM()))===n?" selected":""}>${
+            n===0?"Jour du départ":"J+"+n} — ${dmy(dayISO(t.date,n))}</option>`).join("")}</select></label>
+    </div>
+
+    <div class="row">
+      ${e?`<button class="btn ghost" id="rDel" style="flex:1;color:var(--magenta);border-color:var(--magenta)">Supprimer</button>`
+         :`<button class="btn ghost" id="rX" style="flex:1">Annuler</button>`}
+      <button class="btn" id="rOK" style="flex:2">${e?"Modifier":"Consigner"}</button>
+    </div>`, () => {
+
+    let fix = e ? (e.fix || "obs") : "obs";
+    const setFix = f => { fix = f;
+      document.querySelectorAll("#rFix button").forEach(b =>
+        b.classList.toggle("on", b.dataset.fix === f)); };
+    document.querySelectorAll("#rFix button").forEach(b => b.onclick = () => setFix(b.dataset.fix));
+
+    const setPos = (la,lo) => {
+      $("#rLa").value = fmtCoord(la,1); $("#rLo").value = fmtCoord(lo,0);
+      $("#gpsVal").innerHTML = fmtCoord(la,1)+" &nbsp; "+fmtCoord(lo,0);
+    };
+    const refreshCv = () => {
+      const cc = $("#rCc").value===""?null:+$("#rCc").value;
+      const cv = capVrai(cc, $("#rW").value);
+      $("#cvHint").textContent = cv==null
+        ? "Correction : déclinaison + déviation, positive vers l'Est."
+        : `Cap compas ${cc}° + correction ${(+$("#rW").value||0)>0?"+":""}${+$("#rW").value||0}° = cap vrai ${Math.round(cv)}°`;
+      if($("#rCv").value==="" && cv!=null) $("#rCv").placeholder = Math.round(cv);
+      return cv;
+    };
+    $("#rCc").oninput = refreshCv; $("#rW").oninput = refreshCv; refreshCv();
+
+    const drDist = () => {
+      const l = $("#rL").value;
+      if(l!=="" && last && last.loch!=null && last.loch!=="") return Math.max(0, +l - +last.loch);
+      const s = +$("#rS").value;
+      if(s && last){
+        const mn = ((+$("#rJ").value||0)*1440 + (+$("#rT").value.slice(0,2))*60 + (+$("#rT").value.slice(3,5))) - minOf(last);
+        if(mn > 0) return s * mn/60;
+      }
+      return null;
+    };
+    const hint = () => {
+      const d = drDist();
+      $("#drHint").textContent = prevPos
+        ? (d ? `Estime possible depuis ${fmtCoord(prevPos.lat,1)} ${fmtCoord(prevPos.lon,0)} — ${fmt(d)} NM parcourus.`
+             : "Pour l'estime, renseignez le loch ou la vitesse, et un cap.")
+        : "Pas de point de départ connu : relevez d'abord une position.";
+    };
+    ["#rL","#rS","#rT"].forEach(s => $(s).oninput = hint); hint();
+
+    $("#drBtn").onclick = () => {
+      const cv = $("#rCv").value!=="" ? +$("#rCv").value : refreshCv();
+      const d = drDist();
+      const pt = drPosition(prevPos, cv, d);
+      if(!pt){ toast("Il manque un point de départ, un cap ou une distance"); return; }
+      setPos(pt.lat, pt.lon); setFix("est");
+      toast(`Point estimé — ${fmt(d)} NM au ${Math.round(cv)}°`);
+    };
+    $("#gpsBtn").onclick = () => {
+      if(!navigator.geolocation){ toast("GPS indisponible sur cet appareil"); return; }
+      $("#gpsBtn").textContent = "…";
+      navigator.geolocation.getCurrentPosition(
+        p => { setPos(p.coords.latitude, p.coords.longitude); setFix("obs");
+               $("#gpsBtn").textContent = "GPS";
+               toast("Position relevée à "+Math.round(p.coords.accuracy)+" m près"); },
+        err => { $("#gpsBtn").textContent = "GPS";
+                 toast(err.code===1 ? "Autorisez la position dans Chrome" : "Pas de fix GPS — saisissez à la main"); },
+        {enableHighAccuracy:true, timeout:15000, maximumAge:0});
+    };
+    if($("#rX")) $("#rX").onclick = closeSheet;
+    if($("#rDel")) $("#rDel").onclick = async () => {
+      t.entries = t.entries.filter(x=>x.id!==e.id);
+      closeSheet(); await persist(); drawTrip(); toast("Relevé supprimé");
+    };
+    $("#rOK").onclick = async () => {
+      const cc = $("#rCc").value===""?null:+$("#rCc").value;
+      const corr = $("#rW").value===""?null:+$("#rW").value;
+      const rec = {
+        id: e ? e.id : uid(),
+        t: $("#rT").value || nowHM(),
+        d: +$("#rJ").value || 0,
+        fix,
+        lat: parseCoord($("#rLa").value, true), lon: parseCoord($("#rLo").value, false),
+        cc, corr, cv: $("#rCv").value===""? capVrai(cc,corr) : +$("#rCv").value,
+        loch: $("#rL").value===""?null:+$("#rL").value,
+        sog: $("#rS").value===""?null:+$("#rS").value,
+        ventDir: $("#rVd").value, ventKt: $("#rVk").value===""?null:+$("#rVk").value,
+        hpa: $("#rP").value===""?null:+$("#rP").value,
+        mer: $("#rMe").value,
+        houleDir: $("#rHd").value, houleM: $("#rHm").value,
+        houleS: $("#rHs").value===""?null:+$("#rHs").value,
+        ciel: $("#rCi").value, visi: $("#rVi").value,
+        voilure: $("#rVo").value.trim(), moteur: $("#rMo").checked,
+        obs: $("#rO").value.trim(), pb: $("#rPb").value.trim()
+      };
+      if(e) Object.assign(e, rec); else t.entries.push(rec);
+      closeSheet(); await persist(); drawTrip();
+      toast(e ? "Relevé modifié" : "Relevé de "+rec.t+" consigné");
+    };
+  });
+}
+
+/* --- intervention d'entretien --- */
+function doneSheet(id){
+  const t = S.tasks.find(x=>x.id===id), T = totals();
+  openSheet(`
+    <h3>${esc(t.name)}</h3>
+    <p class="note">Les compteurs relevés aujourd'hui servent de point de départ à la prochaine échéance.</p>
+    <label><span class="eyebrow">Date</span><input id="jD" type="date" value="${today()}"></label>
+    <div class="g2" style="margin-bottom:11px">
+      <label><span class="eyebrow">Heures moteur</span><input id="jH" type="number" inputmode="decimal" step="0.1" value="${Math.round(T.h*10)/10}"></label>
+      <label><span class="eyebrow">Milles au loch</span><input id="jM" type="number" inputmode="decimal" step="1" value="${Math.round(T.mi)}"></label>
+    </div>
+    <div class="g2" style="margin-bottom:11px">
+      <label><span class="eyebrow">Coût (€)</span><input id="jC" type="number" inputmode="decimal" placeholder="0"></label>
+      <label><span class="eyebrow">Note</span><input id="jN" placeholder="Filtre Racor 2010"></label>
+    </div>
+    <div class="row" style="margin-top:4px">
+      <button class="btn ghost" id="jX" style="flex:1">Annuler</button>
+      <button class="btn" id="jOK" style="flex:2">Consigner</button>
+    </div>`, () => {
+    $("#jX").onclick = closeSheet;
+    $("#jOK").onclick = async () => {
+      const rec = {date:$("#jD").value||today(), h:+$("#jH").value||0, mi:+$("#jM").value||0};
+      t.last = rec;
+      S.jobs.push({id:uid(), taskId:t.id, name:t.name, ...rec, cost:+$("#jC").value||0, note:$("#jN").value.trim()});
+      closeSheet(); await persist(); toast("Consigné dans l'historique");
+    };
+  });
+}
+
+function pickSheet(){
+  const have = new Set(S.tasks.map(t=>t.name));
+  openSheet(`
+    <h3>Ajouter des tâches</h3>
+    <div class="sheet-scroll">
+      ${CATS.map(c=>{
+        const rows = CATALOGUE.filter(x=>x.c===c && !have.has(x.n));
+        return rows.length ? `<h2>${c}</h2>` + rows.map(x=>`
+          <label class="pick"><input type="checkbox" value="${esc(x.n)}">
+            <div>${x.n}<small>${[x.h?x.h+" h":null, x.mi?x.mi+" NM":null, x.mo?x.mo+" mois":null]
+              .filter(Boolean).join("  ·  ")}</small></div></label>`).join("") : "";
+      }).join("") || `<p class="note">Tout le catalogue est déjà dans votre programme.</p>`}
+    </div>
+    <div class="row">
+      <button class="btn ghost" id="pX" style="flex:1">Fermer</button>
+      <button class="btn" id="pOK" style="flex:2">Ajouter</button>
+    </div>`, () => {
+    $("#pX").onclick = closeSheet;
+    $("#pOK").onclick = async () => {
+      const sel = [...document.querySelectorAll(".pick input:checked")].map(i=>i.value);
+      sel.forEach(n=>{ const c = CATALOGUE.find(x=>x.n===n);
+        S.tasks.push({id:uid(), name:c.n, cat:c.c, h:c.h, mi:c.mi, mo:c.mo, last:null}); });
+      closeSheet(); await persist();
+      toast(sel.length ? sel.length+" tâche"+(sel.length>1?"s":"")+" ajoutée"+(sel.length>1?"s":"") : "Rien ajouté");
+    };
+  });
+}
+
+/* =========================================================
+   7. Export / import
+   ========================================================= */
+function download(name, text, mime){
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], {type:mime}));
+  a.download = name; a.click(); URL.revokeObjectURL(a.href);
+}
+function toCsv(){
+  const q = s => `"${String(s??"").replace(/"/g,'""')}"`;
+  const COLS = ["type","date","heure","libelle","de","a","point","latitude","longitude",
+    "cap_compas","correction","cap_vrai","loch_nm","vitesse_nds","vent_dir","vent_nds",
+    "pression_hpa","mer_douglas","houle_dir","houle_m","houle_s","temps","visibilite",
+    "voilure","moteur","milles","heures_moteur","cout_eur","observations","probleme"];
+  const L = [COLS.join(";")];
+  const row = o => L.push(COLS.map(c => q(o[c])).join(";"));
+  const visiTxt = v => (VISI.find(x=>x[0]===v)||["",""])[1];
+  [...S.trips].sort((a,b)=>a.date.localeCompare(b.date)).forEach(t=>{
+    row({type:"navigation", date:t.date, heure:t.t0, de:t.from, a:t.to,
+         libelle:t.crew, milles:t.mi, heures_moteur:t.h, observations:t.note});
+    sortEntries(t).forEach(e => row({
+      type:"releve", date:dayISO(t.date,e.d), heure:e.t,
+      point: hasPos(e) ? (e.fix==="est"?"estimé":"observé") : "",
+      latitude: e.lat!=null?fmtCoord(e.lat,1):"", longitude: e.lon!=null?fmtCoord(e.lon,0):"",
+      cap_compas:e.cc, correction:e.corr, cap_vrai:e.cv!=null?Math.round(e.cv):"",
+      loch_nm:e.loch, vitesse_nds:e.sog, vent_dir:e.ventDir, vent_nds:e.ventKt,
+      pression_hpa:e.hpa, mer_douglas:e.mer, houle_dir:e.houleDir, houle_m:e.houleM, houle_s:e.houleS,
+      temps:e.ciel, visibilite:visiTxt(e.visi), voilure:e.voilure,
+      moteur:e.moteur?"oui":"non", observations:e.obs, probleme:e.pb}));
+  });
+  S.jobs.forEach(j => row({type:"entretien", date:j.date, libelle:j.name,
+    milles:j.mi, heures_moteur:j.h, cout_eur:j.cost, observations:j.note}));
+  return "\uFEFF"+L.join("\n");
+}
+
+/* =========================================================
+   8. Câblage
+   ========================================================= */
+document.querySelectorAll(".tab").forEach(b => b.onclick = () => { openTripId=null; show(b.dataset.v); });
+$("#backNav").onclick = () => { openTripId=null; show("nav"); };
+document.body.addEventListener("click", e => {
+  const d = e.target.closest("[data-done]");
+  if(d){ doneSheet(d.dataset.done); return; }
+  const t = e.target.closest("[data-trip]");
+  if(t){ openTripId = t.dataset.trip; show("trip"); drawTrip(); }
+});
+$("#quickTrip").onclick = tripSheet;
+$("#addTrip").onclick   = tripSheet;
+$("#addTasks").onclick  = pickSheet;
+
+$("#saveBoat").onclick = async () => {
+  const sumH = S.trips.reduce((a,t)=>a+(+t.h||0),0);
+  const sumM = S.trips.reduce((a,t)=>a+(+t.mi||0),0);
+  Object.assign(S.boat, {
+    name:$("#fName").value.trim(), model:$("#fModel").value.trim(),
+    engine:$("#fEngine").value.trim(), reg:$("#fReg").value.trim(),
+    decl: $("#fDecl").value===""?0:+$("#fDecl").value,
+    baseHours: ($("#fHours").value===""? S.boat.baseHours : +$("#fHours").value - sumH),
+    baseMiles: ($("#fMiles").value===""? S.boat.baseMiles : +$("#fMiles").value - sumM)
+  });
+  await persist(); fillBoat(); toast("Bateau enregistré");
+};
+$("#expJson").onclick = () => download(`anchor-${today()}.json`, JSON.stringify(S,null,2), "application/json");
+$("#expCsv").onclick  = () => download(`anchor-${today()}.csv`, toCsv(), "text/csv;charset=utf-8");
+$("#impFile").onchange = e => {
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = async () => {
+    try{
+      const d = JSON.parse(r.result);
+      if(!d.boat || !Array.isArray(d.trips)) throw 0;
+      S = migrate(d); await persist(); fillBoat(); toast("Sauvegarde restaurée");
+    }catch(err){ toast("Fichier illisible — attendu : un export .json"); }
+  };
+  r.readAsText(f);
+};
+
+function fillBoat(){
+  const T = totals();
+  $("#fName").value = S.boat.name; $("#fModel").value = S.boat.model;
+  $("#fEngine").value = S.boat.engine; $("#fReg").value = S.boat.reg||"";
+  $("#fDecl").value = S.boat.decl||0;
+  $("#fHours").value = Math.round(T.h*10)/10; $("#fMiles").value = Math.round(T.mi);
+  $("#version").textContent = "Anchor " + VERSION + " — données stockées sur cet appareil";
+  const nEnt = S.trips.reduce((a,t)=>a+(t.entries?t.entries.length:0),0);
+  $("#diag").textContent =
+    `Version ${VERSION} · ${S.trips.length} navigation${S.trips.length>1?"s":""}, `
+    + `${nEnt} relevé${nEnt>1?"s":""}, ${S.tasks.length} tâches · `
+    + (location.protocol === "file:" ? "ouvert en fichier local (pas de mode hors ligne)"
+       : ("serviceWorker" in navigator && navigator.serviceWorker.controller
+          ? "hors ligne actif" : "hors ligne non activé"));
+}
+
+$("#purge").onclick = async () => {
+  try{
+    if(window.caches) for(const k of await caches.keys()) await caches.delete(k);
+    if("serviceWorker" in navigator)
+      for(const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
+    toast("Cache vidé — rechargement");
+    setTimeout(()=>location.reload(true), 700);
+  }catch(e){ toast("Rien à vider ici"); }
+};
+
+/* =========================================================
+   9. Démarrage
+   ========================================================= */
+(async () => {
+  try{ S = migrate(await Store.load() || blank()); }
+  catch(err){ S = blank(); setTimeout(()=>toast("Données illisibles — repartis à zéro"), 400); }
+  fillBoat(); draw();
+  if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+    try{
+      const reg = await navigator.serviceWorker.register("anchor-sw.js");
+      /* Le diagnostic est lu avant la fin de l'enregistrement : on le rafraîchit. */
+      navigator.serviceWorker.ready.then(fillBoat);
+      navigator.serviceWorker.addEventListener("controllerchange", fillBoat);
+      /* Une nouvelle version installée pendant la session : on recharge une fois. */
+      reg.addEventListener("updatefound", () => {
+        const sw = reg.installing;
+        if(!sw) return;
+        sw.addEventListener("statechange", () => {
+          if(sw.state === "installed" && navigator.serviceWorker.controller
+             && !sessionStorage.getItem("anchor:reloaded")){
+            try{ sessionStorage.setItem("anchor:reloaded","1"); }catch(e){}
+            location.reload();
+          }
+        });
+      });
+    }catch(e){}
+  }
+})();
+</script>
+</body>
+</html>
